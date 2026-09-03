@@ -89,7 +89,7 @@
   },
   "devDependencies": {
     "@fontsource/jetbrains-mono": "^5.2.8",
-    "@fontsource/onest": "^5.2.11",
+    "@fontsource/onest": "^5.3.1",
     "@vitejs/plugin-react": "^6.0.3",
     "electron": "^43.0.0",
     "electron-builder": "^26.15.3",
