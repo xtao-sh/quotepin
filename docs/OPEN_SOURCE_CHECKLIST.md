@@ -1,7 +1,7 @@
 # Open-source release checklist
 
-The repository is currently **private** at `XTAO-SH/quotepin`. The items below are
-what remains before switching it to public.
+The repository is public at `XTAO-SH/quotepin`. This section is complete; the
+remaining work is in the desktop-binary section below.
 
 ## Before making the repository public
 
@@ -25,9 +25,10 @@ what remains before switching it to public.
       The pre-publication history was not published: the repository starts from a single
       initial commit authored as `XTAO-SH <101576191+xtao-sh@users.noreply.github.com>`.
       The 35-commit development history is kept only in a local bundle outside the repository.
-- [ ] Enable GitHub private vulnerability reporting and branch protection.
-      Private vulnerability reporting requires a public repository, so this waits until the
-      repository is switched to public.
+- [x] Enable GitHub private vulnerability reporting and branch protection.
+      Private vulnerability reporting is on. `main` refuses force pushes and deletion, and the
+      rule applies to administrators too, so an accidental force push is blocked rather than
+      merely discouraged.
 
 ## Before publishing a desktop binary
 
