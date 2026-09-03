@@ -85,7 +85,7 @@
     "express": "^4.19.2",
     "multer": "^2.2.0",
     "unzipper": "^0.12.5",
-    "zod": "^3.25.76"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@fontsource/jetbrains-mono": "^5.2.8",
