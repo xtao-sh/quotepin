@@ -14,7 +14,9 @@ what remains before switching it to public.
 - [x] Protect the loopback API against DNS rebinding.
 - [x] Require local API and task-scoped MCP capability tokens.
 - [x] Add CI tests, production dependency audit, backup validation, and public-tree checks.
-- [ ] Confirm ownership and publication rights for the current icon and product name.
+- [x] Confirm ownership and publication rights for the current icon and product name.
+      The icon is the owner's own work. The names 批注工作台 and Quotepin are the owner's
+      choice; TRADEMARKS.md reserves both from the code license.
 - [x] Choose the public GitHub organization/repository name and update metadata links.
       Published as `XTAO-SH/quotepin`; `repository`, `homepage` and `bugs` are set
       in `package.json`.
