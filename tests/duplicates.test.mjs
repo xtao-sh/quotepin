@@ -9,14 +9,14 @@ const doc = (id, extra = {}) => ({ id, name: `${id}.pdf`, projectId: "p", pageCo
 {
   const groups = findDuplicateDocuments(
     [
-      doc("a", { originalPath: "/Teach/营销分析/课程介绍.pdf", contentHash: "76ec99d6", updated: 300 }),
-      doc("b", { originalPath: "/Teach/营销分析/课程介绍.pdf", contentHash: "75493c25", updated: 400 })
+      doc("a", { originalPath: "/Docs/示例课程/内容概览.pdf", contentHash: "76ec99d6", updated: 300 }),
+      doc("b", { originalPath: "/Docs/示例课程/内容概览.pdf", contentHash: "75493c25", updated: 400 })
     ],
     { annotationCounts: { a: 2 } }
   );
   assert.equal(groups.length, 1);
   assert.equal(groups[0].reason, "same_source");
-  assert.equal(groups[0].sourcePath, "/Teach/营销分析/课程介绍.pdf");
+  assert.equal(groups[0].sourcePath, "/Docs/示例课程/内容概览.pdf");
   assert.equal(groups[0].sameProject, true);
   // The annotated copy leads, even though the other one is newer.
   assert.deepEqual(groups[0].documents.map((item) => item.id), ["a", "b"]);
@@ -51,8 +51,8 @@ const doc = (id, extra = {}) => ({ id, name: `${id}.pdf`, projectId: "p", pageCo
 // the two would be wrong. Nothing links them, so nothing groups them.
 {
   const groups = findDuplicateDocuments([
-    doc("a", { name: "1.1 导论.pdf", originalPath: "/计量经济学/课件/1.1 导论.pdf", contentHash: "h1" }),
-    doc("b", { name: "1.1 导论.pdf", originalPath: "/商务数据分析/课件/1.1 导论.pdf", contentHash: "h2" })
+    doc("a", { name: "1.1 导论.pdf", originalPath: "/测试课程/资料/1.1 导论.pdf", contentHash: "h1" }),
+    doc("b", { name: "1.1 导论.pdf", originalPath: "/演示项目/资料/1.1 导论.pdf", contentHash: "h2" })
   ]);
   assert.deepEqual(groups, [], "同名不足以判定重复");
 }
@@ -72,10 +72,10 @@ const doc = (id, extra = {}) => ({ id, name: `${id}.pdf`, projectId: "p", pageCo
       doc("a", { projectId: "p1", originalPath: "/deck.pdf" }),
       doc("b", { projectId: "p2", originalPath: "/deck.pdf" })
     ],
-    { projectNames: { p1: "计量", p2: "商务数据分析" } }
+    { projectNames: { p1: "测试", p2: "演示项目" } }
   );
   assert.equal(groups[0].sameProject, false);
-  assert.deepEqual(groups[0].documents.map((item) => item.projectName).sort(), ["商务数据分析", "计量"].sort());
+  assert.deepEqual(groups[0].documents.map((item) => item.projectName).sort(), ["演示项目", "测试"].sort());
 }
 
 // When more than one copy carries annotations, the caller has to be able to say so before deleting.

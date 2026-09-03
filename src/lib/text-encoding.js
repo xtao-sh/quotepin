@@ -1,7 +1,7 @@
 // A PDF that embeds a subset font with Identity-H encoding and no ToUnicode CMap carries no record
 // of which character each glyph stands for. The glyphs draw correctly, so the page looks right, but
 // every extractor — pdf.js, Poppler, Acrobat — can only report the raw glyph index, and reading that
-// as a Unicode code point produces characters scattered across unrelated scripts: 营销分析 comes back
+// as a Unicode code point produces characters scattered across unrelated scripts: 示例课程 comes back
 // as œୗܽؽ (U+0153 Latin Extended-A, U+0B57 Oriya, U+073D Syriac, U+063D Arabic).
 //
 // Detecting that is not a matter of listing forbidden characters — Arabic is perfectly legitimate in

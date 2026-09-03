@@ -24,8 +24,8 @@ try {
   assert.equal(await postError(`${baseUrl}/api/groups`, { id: "teaching", name: "重复" }), "group_exists");
 
   // Projects join a group at creation or later.
-  await postJson(`${baseUrl}/api/projects`, { id: "marketing", name: "营销分析", path: workDir, groupId: "teaching" });
-  await postJson(`${baseUrl}/api/projects`, { id: "metrics", name: "计量经济学", path: workDir });
+  await postJson(`${baseUrl}/api/projects`, { id: "marketing", name: "示例课程", path: workDir, groupId: "teaching" });
+  await postJson(`${baseUrl}/api/projects`, { id: "metrics", name: "测试课程", path: workDir });
   await patchJson(`${baseUrl}/api/projects/metrics`, { groupId: "teaching" });
   assert.deepEqual(await groupOf(["marketing", "metrics"]), ["teaching", "teaching"]);
 
@@ -35,7 +35,7 @@ try {
 
   // A sub-project is placed by its parent. Giving it a group of its own would file the same project
   // in two places in the sidebar, so it is refused — and creating one with a group silently drops it.
-  const slides = (await postJson(`${baseUrl}/api/projects`, { id: "slides", name: "课件", parentId: "marketing", groupId: "research" })).project;
+  const slides = (await postJson(`${baseUrl}/api/projects`, { id: "slides", name: "资料", parentId: "marketing", groupId: "research" })).project;
   assert.equal(slides.parentId, "marketing");
   assert.equal(slides.groupId, "", "子项目不该自己带分组");
   assert.equal(await patchError(`${baseUrl}/api/projects/slides`, { groupId: "research" }), "project_child_cannot_group");

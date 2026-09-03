@@ -79,7 +79,7 @@ function defaultOcrLanguages() {
 }
 
 // Recovering one selection is a different problem from reading a scanned page, and measurably so:
-// on the deck this was built for, chi_sim alone read 营销分析 and 课程介绍 correctly while chi_sim+eng
+// on the deck this was built for, chi_sim alone read 示例课程 and 内容概览 correctly while chi_sim+eng
 // turned a three-character Chinese name into "Ba)ABe" — offering English lets tesseract read Chinese
 // as Latin. chi_sim carries Latin letters and digits of its own, so nothing is lost by leaving eng out.
 const REGION_OCR_LANGUAGES = String(process.env.REVIEW_REGION_OCR_LANGS || (installedOcrLanguages().has("chi_sim") ? "chi_sim" : OCR_LANGUAGES));
@@ -2834,7 +2834,7 @@ function storedPageTextLayer(document, page) {
 // Used when the text layer exists but decodes to glyph indices, which no re-extraction can fix.
 //
 // Matching OCR word boxes against the selection rectangle was the obvious approach and it does not
-// survive contact with Chinese: tesseract reports 营销 as one box wide enough to overlap 分 and 析,
+// survive contact with Chinese: tesseract reports 示例 as one box wide enough to overlap 课 and 程,
 // so the boxes cannot be trusted to say which characters the user actually covered. Rendering only
 // the selected rectangle and reading that removes the question.
 async function ocrRegionText(document, page, rects) {
@@ -2851,7 +2851,7 @@ async function ocrRegionText(document, page, rects) {
   // the part of each line the user covered instead of the whole block they span.
   //
   // 300 rather than something higher: tesseract is trained around this resolution and rendering the
-  // same slide at 600 turned 营销分析 into 营销分村.
+  // same slide at 600 turned 示例课程 into 示例课桯.
   const REGION_DPI = 300;
   const MAX_REGIONS = 12;
   const snapped = await snapRectsToWords(document, page, rects);
@@ -2887,7 +2887,7 @@ function tightenCjkSpacing(text) {
 }
 
 // A font with no ToUnicode usually has unreliable metrics in the viewer as well: on the slide this
-// was built for, the browser laid 营销分析 out 2.8 percentage points narrower than the page really
+// was built for, the browser laid 示例课程 out 2.8 percentage points narrower than the page really
 // is, and cropping to the browser's rectangle sliced the last character in half. The extracted text
 // layer is the other way round — its characters are unreadable but its geometry comes straight from
 // the page, so it is exactly what the crop should be squared up against.
@@ -2929,7 +2929,7 @@ async function ocrOneRegion(pdfPath, page, rect, { pageWidth, pageHeight, dpi, w
   // Glyphs sit slightly outside the box the viewer draws around them, and a crop that clips an
   // ascender costs more in accuracy than a little extra context costs in precision.
   // Scaled from the line height rather than the selection width: a narrow selection needs the same
-  // few pixels of margin as a wide one, and 营销分析 lost its last character to a width-scaled pad.
+  // few pixels of margin as a wide one, and 示例课程 lost its last character to a width-scaled pad.
   const padX = Math.max(8, (Number(rect.h) / 100) * pixelsHigh * 0.3);
   // Kept tight: the rectangle has already been squared up against the text layer's own word boxes,
   // so it covers the glyphs, and reaching further down pulls in whatever rule or underline sits
@@ -2960,7 +2960,7 @@ async function ocrOneRegion(pdfPath, page, rect, { pageWidth, pageHeight, dpi, w
 
   // Which segmentation mode wins depends on what was selected, and tesseract is honest enough about
   // its own confidence to choose between them: on a four-character slide title, reading the crop as
-  // one block gave 莒销分析 at 63% while reading it as a single word gave 营销分析 at 77%.
+  // one block gave 木例课程 at 63% while reading it as a single word gave 示例课程 at 77%.
   const modes = ["6", "8", "13"];
   let best = { text: "", confidence: NaN };
   for (const psm of modes) {

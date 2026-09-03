@@ -19,7 +19,7 @@ const baseUrl = `http://127.0.0.1:${port}`;
 try {
   const sourcePath = path.join(workDir, "lecture.txt");
   fs.writeFileSync(sourcePath, "第一章 回归介绍\n第二节 数据类型\n");
-  await postJson(`${baseUrl}/api/projects`, { id: "p", name: "计量经济学", path: workDir });
+  await postJson(`${baseUrl}/api/projects`, { id: "p", name: "测试课程", path: workDir });
   const document = (await postJson(`${baseUrl}/api/documents/import-path`, { path: sourcePath, projectId: "p" })).document;
   assert.ok(!document.archivedAt, "刚导入的文档不该是归档状态");
 

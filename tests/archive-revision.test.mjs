@@ -21,7 +21,7 @@ const baseUrl = `http://127.0.0.1:${port}`;
 try {
   const sourcePath = path.join(workDir, "slides.txt");
   fs.writeFileSync(sourcePath, "第一章 回归介绍\n第二节 数据类型\n");
-  await postJson(`${baseUrl}/api/projects`, { id: "p", name: "商务数据分析", path: workDir });
+  await postJson(`${baseUrl}/api/projects`, { id: "p", name: "演示项目", path: workDir });
   const document = (await postJson(`${baseUrl}/api/documents/import-path`, { path: sourcePath, projectId: "p" })).document;
   const pageUrl = `${baseUrl}/api/documents/${document.id}/pages/1/annotations`;
 

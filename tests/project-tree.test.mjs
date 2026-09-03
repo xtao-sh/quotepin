@@ -16,8 +16,8 @@ const port = await new Promise((resolve) => server.on("listening", () => resolve
 const baseUrl = `http://127.0.0.1:${port}`;
 
 try {
-  await postJson(`${baseUrl}/api/projects`, { id: "course", name: "营销分析", path: workDir });
-  const child = (await postJson(`${baseUrl}/api/projects`, { id: "slides", name: "课件", parentId: "course" })).project;
+  await postJson(`${baseUrl}/api/projects`, { id: "course", name: "示例课程", path: workDir });
+  const child = (await postJson(`${baseUrl}/api/projects`, { id: "slides", name: "资料", parentId: "course" })).project;
   assert.equal(child.parentId, "course");
 
   // One level and no more: a grandchild, a project that is its own parent, and a parent that does

@@ -1089,7 +1089,7 @@ function App() {
 
 
   // Some PDFs embed a subset font with no ToUnicode map, and then the text layer reports glyph
-  // indices instead of characters: a slide reading 营销分析 comes back as œୗܽؽ. Nothing in the file
+  // indices instead of characters: a slide reading 示例课程 comes back as œୗܽؽ. Nothing in the file
   // says what those glyphs mean, so the only way to read the selection is to look at the rendered
   // page. The annotation is saved immediately either way — this replaces its quote once the page
   // has been read, rather than making the user wait on OCR before they can start typing.
