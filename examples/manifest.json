@@ -1,0 +1,181 @@
+{
+  "$comment": "示例工作区的定义。scripts/load-examples.mjs 读它。坐标是页面百分比，原点在左上角。",
+  "groups": [
+    { "id": "ex-teaching", "name": "教学" },
+    { "id": "ex-research", "name": "科研" }
+  ],
+  "projects": [
+    { "id": "ex-course", "name": "示例课程", "groupId": "ex-teaching" },
+    { "id": "ex-lecture4", "name": "第4讲：抽样与偏差", "parentId": "ex-course" },
+    { "id": "ex-inbox", "name": "待归档收件箱", "groupId": "ex-teaching" },
+    { "id": "ex-reading", "name": "课堂参与度文献", "groupId": "ex-research" }
+  ],
+  "documents": [
+    {
+      "file": "课程大纲.pdf",
+      "projectId": "ex-course",
+      "note": "主力批注对象：四种批注类型同处一档"
+    },
+    {
+      "file": "课程日历.csv",
+      "projectId": "ex-course",
+      "note": "CSV 进入文本层；与大纲的周数矛盾，是全文搜索的落点"
+    },
+    {
+      "file": "第3讲讲义.pdf",
+      "projectId": "ex-course",
+      "archived": true,
+      "note": "归档演示：批注与版本保留，只清渲染缓存"
+    },
+    {
+      "file": "第4讲讲义.pdf",
+      "projectId": "ex-lecture4",
+      "newerSource": "第4讲讲义-v2.pdf",
+      "note": "刷新演示：载入后源文件被换成 v2，App 会报「有新版本」，由你来点刷新"
+    },
+    {
+      "file": "讲义修订说明.md",
+      "projectId": "ex-lecture4",
+      "note": "Markdown 文本层；解释刷新后两条批注会发生什么"
+    },
+    {
+      "file": "期末项目评分标准.txt",
+      "projectId": "ex-course",
+      "note": "纯文本走文本层；与大纲的字数矛盾"
+    },
+    {
+      "file": "抽样示意图.png",
+      "projectId": "ex-course",
+      "note": "图片只能用点标和框选"
+    },
+    {
+      "file": "课程大纲.pdf",
+      "as": "课程大纲（收件箱副本）.pdf",
+      "projectId": "ex-inbox",
+      "note": "重复对里没有批注的那一份"
+    },
+    {
+      "file": "读书笔记-课堂参与度.txt",
+      "projectId": "ex-reading",
+      "note": "第二个分组存在的理由"
+    }
+  ],
+  "annotations": [
+    {
+      "file": "课程大纲.pdf",
+      "page": 1,
+      "type": "text",
+      "match": "课程共 12 周",
+      "tag": "todo",
+      "text": "这里写的 12 周和课程日历.csv 里的 14 周对不上。先确认哪个是对的，再一起改。"
+    },
+    {
+      "file": "课程大纲.pdf",
+      "page": 1,
+      "type": "note",
+      "tag": "question",
+      "text": "整页备注：这一页面向的是选课学生还是教务？两种读者想看的东西不一样。"
+    },
+    {
+      "file": "课程大纲.pdf",
+      "page": 2,
+      "type": "pin",
+      "x": 16,
+      "y": 46,
+      "tag": "todo",
+      "text": "第 4 讲和第 2 讲的内容有重叠，考虑合并或者把第 2 讲收窄。"
+    },
+    {
+      "file": "课程大纲.pdf",
+      "page": 2,
+      "type": "region",
+      "x": 12,
+      "y": 60,
+      "w": 46,
+      "h": 14,
+      "tag": "question",
+      "text": "框选：第二部分只列了两讲，后面几讲还没写完。"
+    },
+    {
+      "file": "课程大纲.pdf",
+      "page": 3,
+      "type": "text",
+      "match": "正文 300 字以内",
+      "tag": "resolved",
+      "text": "已解决：以评分标准里的 500 字为准，这里改掉了。默认导出会排除「已解决」，所以这条不会出现在导出结果里。"
+    },
+    {
+      "file": "课程日历.csv",
+      "page": 1,
+      "type": "note",
+      "tag": "todo",
+      "text": "整页备注：这份日历排到第 14 周，但大纲写的是 12 周。两份文件里搜「周」就能同时看到。"
+    },
+    {
+      "file": "第3讲讲义.pdf",
+      "page": 1,
+      "type": "text",
+      "match": "改写后",
+      "tag": "resolved",
+      "text": "这一讲这轮不再改了，整份归档。归档不是删除——这条批注和版本历史都还在。"
+    },
+    {
+      "file": "第4讲讲义.pdf",
+      "page": 3,
+      "type": "text",
+      "match": "谁被系统性地漏掉了",
+      "tag": "question",
+      "text": "这句话是本讲的题眼，建议提到第一页当引子。刷新到第二版之后它会移到第 4 页，但一个字没改，所以这条批注应当被重新定位并且仍然对得上。"
+    },
+    {
+      "file": "第4讲讲义.pdf",
+      "page": 4,
+      "type": "text",
+      "match": "下周三 18:00",
+      "tag": "todo",
+      "text": "截止时间要和课程日历对齐。第二版把它改成了下周五 12:00，所以刷新之后这条批注会失配——需要你来决定它还算不算数。"
+    },
+    {
+      "file": "讲义修订说明.md",
+      "page": 1,
+      "type": "note",
+      "tag": "question",
+      "text": "整页备注：这份说明本身就是刷新演示的说明书，读完再去点刷新。"
+    },
+    {
+      "$comment": "纯文本文档没有 PDF 文字层，脚本算不出选区坐标，所以这里用整页备注而不是文字批注。在应用里手动选中文字仍然可以做文字批注。",
+      "file": "期末项目评分标准.txt",
+      "page": 1,
+      "type": "note",
+      "tag": "todo",
+      "text": "整页备注：这里写的「正文 500 字以内」和大纲第 3 页的 300 字冲突，两处只能留一个。"
+    },
+    {
+      "file": "抽样示意图.png",
+      "page": 1,
+      "type": "pin",
+      "x": 30,
+      "y": 26,
+      "tag": "question",
+      "text": "图片文档只能打点标和框选：没有文字层，就没有文字批注。"
+    },
+    {
+      "file": "抽样示意图.png",
+      "page": 1,
+      "type": "region",
+      "x": 8,
+      "y": 40,
+      "w": 62,
+      "h": 16,
+      "tag": "todo",
+      "text": "框选：这一段说明该做成图，不该用文字凑。装了 chi_sim 之后可以对整页做 OCR，把它变成可选中的文字。"
+    },
+    {
+      "file": "读书笔记-课堂参与度.txt",
+      "page": 1,
+      "type": "note",
+      "tag": "question",
+      "text": "整页备注：这条属于「科研」分组。分组可以折叠，用来把教学和研究分开。"
+    }
+  ]
+}

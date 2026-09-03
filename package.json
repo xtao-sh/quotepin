@@ -20,6 +20,7 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "examples": "node scripts/load-examples.mjs",
     "dev:vite": "vite --host 127.0.0.1",
     "api": "node server/index.js",
     "mcp": "node mcp/review-annotation-server.mjs",
