@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      # Tesseract is what makes the OCR path real; without it that code was never executed here.
+      - name: Install document tools
+        run: brew install poppler tesseract
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Check public tree
+        run: npm run check:public
+      - name: Check runtime
+        run: npm run check:runtime
+      - name: Lint
+        run: npm run lint
+      - name: Audit dependencies
+        run: npm run check:security
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Verify bundled notices
+        run: test -f dist/LICENSE.txt && test -f dist/THIRD_PARTY_NOTICES.md && test -d dist/licenses
+
+  desktop:
+    # Packaging and the Electron main process had no coverage at all: CI never ran electron-builder
+    # and never launched the app, so an asar/unpack or startup regression could only be found by
+    # a human downloading a build.
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install document tools
+        run: brew install poppler
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Package the desktop app
+        run: npm run build && npx electron-builder --dir
+      - name: Verify the packaged tree
+        run: |
+          APP="release/mac-arm64/批注工作台.app/Contents/Resources"
+          test -f "$APP/app.asar"
+          # asarUnpack has to keep these outside the archive or the Python helpers cannot run.
+          test -f "$APP/app.asar.unpacked/server/pdf-outline.py"
+          test -f "$APP/app.asar.unpacked/server/annotated-pdf.py"
+          test -d "$APP/app.asar.unpacked/dist-mcp"
+      - name: Desktop smoke test
+        # A packaged app has no bundled Python; supply the interpreter that has the document
+        # dependencies, the same way a user following the README would.
+        env:
+          PYTHON: python3
+        run: npm run test:desktop

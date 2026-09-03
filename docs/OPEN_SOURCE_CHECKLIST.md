@@ -1,0 +1,31 @@
+# Open-source release checklist
+
+## Before making the repository public
+
+- [x] Add an OSI-approved source license.
+- [x] Add third-party notices and copy licenses into binary builds.
+- [x] Remove private design references and obsolete artwork from tracked files.
+- [x] Remove hard-coded local paths from current documentation and source.
+- [x] Add README, security policy, contribution guide, privacy notes, and CI.
+- [x] Add runtime dependency checks and Python dependency pins.
+- [x] Protect the loopback API against DNS rebinding.
+- [x] Require local API and task-scoped MCP capability tokens.
+- [x] Add CI tests, production dependency audit, backup validation, and public-tree checks.
+- [ ] Confirm ownership and publication rights for the current icon and product name.
+- [ ] Choose the public GitHub organization/repository name and update metadata links.
+- [ ] Replace the local Git author email and, before the first push, decide whether to
+      rewrite existing author metadata and remove private assets from old commits.
+- [ ] Enable GitHub private vulnerability reporting and branch protection.
+
+## Before publishing a desktop binary
+
+- [ ] Decide whether to bundle Poppler, Python, and LibreOffice or require external
+      installation; review each bundled binary's redistribution terms.
+- [ ] Produce an SBOM and verify the packaged third-party license directory.
+- [ ] Resolve or formally accept 16 high-severity, development-only advisories in the
+      Electron Builder packaging dependency chain; production dependencies currently
+      audit cleanly.
+- [ ] Build separate Apple silicon and Intel artifacts, or a tested universal build.
+- [ ] Sign with an Apple Developer ID, enable hardened runtime, and notarize the DMG.
+- [ ] Test installation on a clean macOS account without Homebrew or Codex runtimes.
+- [ ] Publish checksums and release notes.

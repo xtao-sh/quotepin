@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "review-annotation": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["mcp/review-annotation-server.mjs"]
+    }
+  }
+}
