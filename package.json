@@ -1,17 +1,17 @@
 {
-  "name": "review-annotation",
+  "name": "quotepin",
   "version": "0.6.0",
   "private": true,
-  "description": "Local document review and annotation desktop app.",
+  "description": "Quotepin (批注工作台) — a local-first document review and annotation desktop app.",
   "author": "XTAO-SH",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/XTAO-SH/review-annotation#readme",
+  "homepage": "https://github.com/XTAO-SH/quotepin#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/XTAO-SH/review-annotation.git"
+    "url": "git+https://github.com/XTAO-SH/quotepin.git"
   },
   "bugs": {
-    "url": "https://github.com/XTAO-SH/review-annotation/issues"
+    "url": "https://github.com/XTAO-SH/quotepin/issues"
   },
   "engines": {
     "node": ">=22.12.0"

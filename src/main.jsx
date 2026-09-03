@@ -5724,7 +5724,7 @@ class AppErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("Review Annotation UI error", error, info);
+    console.error("Quotepin UI error", error, info);
     const message = String(error?.message || error || "");
     const chunkFailure = /dynamically imported module|loading chunk|importing a module script/i.test(message);
     if (chunkFailure && sessionStorage.getItem("review-annotation-chunk-reload") !== "1") {

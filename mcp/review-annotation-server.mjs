@@ -38,7 +38,7 @@ const server = new McpServer({
   version: "1.2.0"
 }, {
   instructions: [
-    "This server connects to the local Review Annotation app.",
+    "This server connects to the local Quotepin app.",
     "Prefer isolated review-task tools whenever the user provides a REV task ID.",
     "A review task is a frozen document/project snapshot and does not change when the user switches documents in the app.",
     "While processing a task, only inspect its snapshotArtifactPath and only modify exact files or directories listed in allowedPaths.",
@@ -164,7 +164,7 @@ server.registerTool("update_task_review_item_status", {
 } else {
 server.registerTool("list_review_documents", {
   title: "Get active review document",
-  description: "Return only the document currently authorized in the Review Annotation app, including its tracked source path and revision.",
+  description: "Return only the document currently authorized in the Quotepin app, including its tracked source path and revision.",
   inputSchema: {},
   annotations: { readOnlyHint: true, openWorldHint: false }
 }, tool(async () => {
@@ -408,7 +408,7 @@ async function apiRequest(endpoint, options = {}) {
       cachedBaseUrl = "";
     }
   }
-  throw lastError || new Error("Review Annotation app is not available.");
+  throw lastError || new Error("Quotepin app is not available.");
 }
 
 async function resolveBaseUrl(force = false) {
