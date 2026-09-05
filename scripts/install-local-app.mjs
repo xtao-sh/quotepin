@@ -35,8 +35,14 @@ try {
   fs.renameSync(temp, destination);
   verify(destination);
   console.log(`Local desktop app installed: ${destination}`);
-  if (movedPrevious) console.log(`Previous version retained for rollback: ${previous}`);
-  prunePreviousApps(parent, previous);
+  // The previous copy earns its keep only until here: it is what the catch below renames back if the
+  // swap fails. Once the new app is in place and its signature verifies, it is 300MB describing a
+  // version that a checkout and a build can reproduce, so it goes.
+  if (movedPrevious) {
+    fs.rmSync(previous, { recursive: true, force: true });
+    movedPrevious = false;
+  }
+  prunePreviousApps(parent, "");
   if (wasRunning) run("open", [destination], { allowFailure: true });
 } catch (error) {
   fs.rmSync(temp, { recursive: true, force: true });
@@ -84,7 +90,6 @@ function prunePreviousApps(directory, retainedPath) {
     .map((name) => path.join(directory, name))
     .filter((appPath) => appPath !== retainedPath)
     .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-  // Everything except the one just retained. Keeping a second rollback bought nothing — it is two
-  // installs behind by the time it would be reached for — and each one is 300MB.
+  // Everything, including any left by an older version of this script that kept one behind.
   for (const appPath of backups) fs.rmSync(appPath, { recursive: true, force: true });
 }
