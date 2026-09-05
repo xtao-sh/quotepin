@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("reviewAnnotationDesktop", {
   pickDocumentPath: () => ipcRenderer.invoke("review:pick-document-path"),
   pickDocumentPaths: () => ipcRenderer.invoke("review:pick-document-paths"),
   pickProjectDirectory: () => ipcRenderer.invoke("review:pick-project-directory"),
+  pickImportDirectory: (startPath) => ipcRenderer.invoke("review:pick-import-directory", startPath),
   getFilePath: (file) => webUtils.getPathForFile(file),
   onBeforeClose: (callback) => {
     const listener = (_event, requestId) => callback(requestId);

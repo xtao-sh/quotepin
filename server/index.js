@@ -856,6 +856,149 @@ app.post("/api/documents/import-path", async (req, res) => {
   }
 });
 
+// Listing a folder is cheap and importing is not, so this route only reports what is there and
+// leaves every choice to the caller. The folder is picked in the native dialog, so the user has
+// consented to it — but the path still arrives over HTTP, so it goes through the same resolution and
+// the same refusal of the app's own storage as an imported file does.
+const SCAN_FILE_LIMIT = 2000;
+const SCAN_DEPTH_LIMIT = 6;
+const SCANNABLE_EXTENSIONS = new Set([
+  "pdf", "png", "jpg", "jpeg", "webp", "gif", "md", "markdown", "txt",
+  "csv", "tsv", "ppt", "pptx", "doc", "docx", "xls", "xlsx", "html", "htm"
+]);
+
+function resolveLocalDirectory(input) {
+  const raw = String(input ?? "").trim().replace(/^"(.*)"$/s, "$1").replace(/^'(.*)'$/s, "$1").trim();
+  if (!raw) return "";
+  const candidates = [];
+  if (/^file:\/\//i.test(raw)) {
+    try {
+      candidates.push(fileURLToPath(raw));
+    } catch {
+      // Not a URL this platform understands; the plain forms below still get a chance.
+    }
+  }
+  candidates.push(raw === "~" || raw.startsWith(`~${path.sep}`) ? path.join(os.homedir(), raw.slice(2)) : raw);
+  if (raw.includes("\\")) candidates.push(raw.replace(/\\(.)/g, "$1"));
+  for (const candidate of candidates) {
+    try {
+      if (fs.statSync(candidate).isDirectory()) return path.resolve(candidate);
+    } catch {
+      // Try the next spelling.
+    }
+  }
+  return "";
+}
+
+function scanFolderForImport(root, { recursive = false } = {}) {
+  const files = [];
+  const unreadable = [];
+  let subdirectories = 0;
+  let truncated = false;
+
+  const walk = (directory, depth) => {
+    if (truncated) return;
+    let entries;
+    try {
+      entries = fs.readdirSync(directory, { withFileTypes: true });
+    } catch {
+      unreadable.push(path.relative(root, directory) || ".");
+      return;
+    }
+    for (const entry of entries) {
+      if (truncated) return;
+      // Dotfiles here are macOS bookkeeping (.DS_Store, ._resource forks), never review material.
+      if (entry.name.startsWith(".")) continue;
+      const full = path.join(directory, entry.name);
+      let stats;
+      try {
+        // stat rather than lstat so a symlinked file still counts, but only descend into real
+        // directories — following symlinked ones is how a scan finds its way into a loop.
+        stats = fs.statSync(full);
+      } catch {
+        continue;
+      }
+      if (stats.isDirectory()) {
+        if (entry.isSymbolicLink()) continue;
+        subdirectories += 1;
+        if (recursive && depth < SCAN_DEPTH_LIMIT && !isAppOwnedCopy(full)) walk(full, depth + 1);
+        continue;
+      }
+      if (!stats.isFile()) continue;
+      const ext = path.extname(entry.name).slice(1).toLowerCase();
+      if (!SCANNABLE_EXTENSIONS.has(ext)) continue;
+      if (files.length >= SCAN_FILE_LIMIT) {
+        truncated = true;
+        return;
+      }
+      files.push({
+        path: full,
+        name: entry.name,
+        relativePath: path.relative(root, full),
+        ext,
+        kind: classify("", ext),
+        size: stats.size,
+        modifiedAt: Math.round(stats.mtimeMs),
+        tooLarge: stats.size > MAX_DOCUMENT_BYTES
+      });
+    }
+  };
+
+  walk(root, 0);
+  files.sort((a, b) => a.relativePath.localeCompare(b.relativePath, "zh-Hans-CN"));
+  return { files, subdirectories, unreadable, truncated };
+}
+
+app.post("/api/documents/scan-folder", (req, res) => {
+  const directory = resolveLocalDirectory(req.body?.path);
+  if (!directory) {
+    res.status(400).json({
+      ok: false,
+      error: "missing_directory",
+      detail: "找不到这个文件夹。请确认路径正确，且文件夹仍在原位置。"
+    });
+    return;
+  }
+  if (isAppOwnedCopy(directory)) {
+    res.status(400).json({
+      ok: false,
+      error: "invalid_directory",
+      detail: "这是批注工作台自己保管文件的目录，不能作为导入来源。"
+    });
+    return;
+  }
+  try {
+    const scan = scanFolderForImport(directory, { recursive: req.body?.recursive === true });
+    // A file already tracked by a live document must be visible as such, because importing a path a
+    // second time does not merge — it creates a second document and a duplicate to clean up later.
+    const tracked = new Map();
+    for (const document of store.getWorkspace().documents || []) {
+      if (document.archivedAt) continue;
+      const recorded = recordedRefreshSourcePath(document);
+      if (recorded) tracked.set(path.resolve(recorded), document.id);
+    }
+    const files = scan.files.map((file) => {
+      const documentId = tracked.get(path.resolve(file.path)) || "";
+      return { ...file, imported: Boolean(documentId), documentId };
+    });
+    const byKind = {};
+    for (const file of files) byKind[file.kind] = (byKind[file.kind] || 0) + 1;
+    res.json({
+      ok: true,
+      directory,
+      recursive: req.body?.recursive === true,
+      files,
+      byKind,
+      subdirectories: scan.subdirectories,
+      unreadable: scan.unreadable,
+      truncated: scan.truncated,
+      limit: SCAN_FILE_LIMIT
+    });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: "scan_folder_failed", detail: error.message });
+  }
+});
+
 app.post("/api/documents/import-url", async (req, res) => {
   const incomingPath = path.join(DOCUMENT_UPLOAD_DIR, `remote-${Date.now().toString(36)}-${crypto.randomBytes(6).toString("hex")}.download`);
   try {

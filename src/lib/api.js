@@ -71,6 +71,10 @@ export async function importDocumentPath(filePath, projectId) {
   return postJson("/api/documents/import-path", { path: filePath, projectId });
 }
 
+export async function scanImportFolder(directoryPath, { recursive = false } = {}) {
+  return postJson("/api/documents/scan-folder", { path: directoryPath, recursive });
+}
+
 export async function importDocumentUrl(url, projectId) {
   return postJson("/api/documents/import-url", { url, projectId });
 }

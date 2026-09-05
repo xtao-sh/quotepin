@@ -310,6 +310,20 @@ ipcMain.handle("review:pick-document-paths", async (event) => {
   return result.canceled ? [] : result.filePaths;
 });
 
+ipcMain.handle("review:pick-import-directory", async (event, startPath) => {
+  assertTrustedRenderer(event);
+  // Opening at the folder the user is already thinking about — the one holding a document they just
+  // looked at — is the whole point of the entry point on a document row.
+  const suggested = typeof startPath === "string" && startPath ? startPath : undefined;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "选择要导入的文件夹",
+    buttonLabel: "扫描这个文件夹",
+    ...(suggested ? { defaultPath: suggested } : {}),
+    properties: ["openDirectory"]
+  });
+  return result.canceled ? "" : result.filePaths[0] || "";
+});
+
 ipcMain.handle("review:pick-project-directory", async (event) => {
   assertTrustedRenderer(event);
   const result = await dialog.showOpenDialog(mainWindow, {

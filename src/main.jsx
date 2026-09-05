@@ -108,6 +108,7 @@ import {
   getWorkspace,
   importDocumentPath,
   importDocumentUrl,
+  scanImportFolder,
   moveDocumentToProject,
   readRegionText,
   setDocumentArchived,
@@ -209,6 +210,7 @@ function App() {
   const [projectRenameValue, setProjectRenameValue] = useState("");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [duplicateReview, setDuplicateReview] = useState(null);
+  const [folderImport, setFolderImport] = useState(null);
   // Per-annotation status of reading an unreadable quote off the rendered page.
   const [quoteRecovery, setQuoteRecovery] = useState({});
   const [appDialog, setAppDialog] = useState(null);
@@ -1189,23 +1191,47 @@ function App() {
 
   const handleUploads = async (files) => {
     const list = Array.from(files || []).filter(Boolean);
-    if (canResolveFilePath && list.length) {
-      const paths = list.map((file) => {
-        try {
-          return window.reviewAnnotationDesktop.getFilePath(file);
-        } catch {
-          return "";
-        }
-      });
-      if (paths.every(Boolean)) {
-        await handlePathImports(paths);
-        return;
+    if (!list.length) return;
+    // Decide file by file. Requiring every item to resolve meant one pathless item — a screenshot
+    // pasted alongside real files — quietly dragged all of them down to a bytes-only import, and a
+    // document imported that way can never be refreshed from its source again.
+    const resolved = list.map((file) => {
+      if (!canResolveFilePath) return { file, filePath: "" };
+      try {
+        return { file, filePath: window.reviewAnnotationDesktop.getFilePath(file) || "" };
+      } catch {
+        return { file, filePath: "" };
       }
-    }
-    for (let index = 0; index < list.length; index += 1) {
-      await handleUpload(list[index], { open: index === list.length - 1 });
+    });
+    const paths = resolved.filter((entry) => entry.filePath).map((entry) => entry.filePath);
+    const blobs = resolved.filter((entry) => !entry.filePath).map((entry) => entry.file);
+    if (paths.length) await handlePathImports(paths);
+    for (let index = 0; index < blobs.length; index += 1) {
+      await handleUpload(blobs[index], { open: !paths.length && index === blobs.length - 1 });
     }
   };
+
+  // Pasting a file copied in Finder is the same import as dropping one in, and it goes through the
+  // same resolution for the same reason: a document that arrives without its real path can never be
+  // refreshed afterwards. handleUploads already falls back to sending the bytes when there is no path
+  // behind the clipboard — a screenshot, say — so both cases land somewhere sensible.
+  //
+  // A paste aimed at a text field is left alone. Cmd+V in the comment box is still Cmd+V.
+  const uploadsRef = useRef(handleUploads);
+  uploadsRef.current = handleUploads;
+  useEffect(() => {
+    const onPaste = (event) => {
+      const target = event.target;
+      const tag = String(target?.tagName || "").toUpperCase();
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      const files = Array.from(event.clipboardData?.files || []);
+      if (!files.length) return;
+      event.preventDefault();
+      uploadsRef.current(files.map(namePastedFile));
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, []);
 
   const handleImportSources = async (input) => {
     const entries = splitImportSources(input).map((line) => classifyImportSource(line));
@@ -1453,6 +1479,93 @@ function App() {
       setSyncState(isApiAvailableError(error) ? "offline" : "error");
       await alertUser("新建项目失败，工作区没有发生变化。", "新建失败");
     }
+  };
+
+  const scanFolderForImport = async (directory, recursive) => {
+    setFolderImport((prev) => ({ ...(prev || {}), open: true, directory, recursive, loading: true, error: "" }));
+    try {
+      const result = await scanImportFolder(directory, { recursive });
+      setFolderImport({
+        open: true,
+        loading: false,
+        error: "",
+        importing: false,
+        directory: result.directory,
+        recursive: result.recursive,
+        files: result.files || [],
+        byKind: result.byKind || {},
+        subdirectories: result.subdirectories || 0,
+        unreadable: result.unreadable || [],
+        truncated: Boolean(result.truncated),
+        limit: result.limit || 0,
+        // A fresh listing describes a fresh situation, so last run's successes and failures go.
+        results: {}
+      });
+      setSyncState("synced");
+    } catch (error) {
+      setFolderImport((prev) => ({
+        ...(prev || {}),
+        open: true,
+        loading: false,
+        directory,
+        files: [],
+        error: `读取文件夹失败。${describeOperationError(error)}`
+      }));
+      setSyncState(isApiAvailableError(error) ? "offline" : "error");
+    }
+  };
+
+  const pickFolderToImport = async (startPath = "") => {
+    if (!window.reviewAnnotationDesktop?.pickImportDirectory) {
+      await alertUser("在浏览器里没法选择文件夹，请在桌面版里使用这个功能。", "无法选择文件夹");
+      return;
+    }
+    const directory = await window.reviewAnnotationDesktop.pickImportDirectory(startPath);
+    if (!directory) return;
+    await scanFolderForImport(directory, Boolean(folderImport?.recursive));
+  };
+
+  const openFolderImport = async (startPath = "") => {
+    setFolderImport({ open: true, loading: false, directory: "", files: [], results: {}, recursive: false });
+    await pickFolderToImport(startPath);
+  };
+
+  // Sequential on purpose. Every import rewrites the whole workspace file and fsyncs it, so running
+  // them at once buys nothing, and one file at a time is what makes an honest per-file result
+  // possible — which is the point of the list. A failure marks that file and the run carries on.
+  const runFolderImport = async (paths) => {
+    const list = Array.from(paths || []).filter(Boolean);
+    if (!list.length) return;
+    setFolderImport((prev) => ({
+      ...(prev || {}),
+      importing: true,
+      results: { ...(prev?.results || {}) }
+    }));
+    for (const filePath of list) {
+      setFolderImport((prev) => ({
+        ...(prev || {}),
+        results: { ...(prev?.results || {}), [filePath]: { status: "importing", detail: "" } }
+      }));
+      try {
+        setSyncState("saving");
+        const result = await importDocumentPath(filePath, currentProjectId);
+        registerImportedDocument(result.document, { open: false });
+        setFolderImport((prev) => ({
+          ...(prev || {}),
+          results: { ...(prev?.results || {}), [filePath]: { status: "done", detail: "" } },
+          files: (prev?.files || []).map((file) =>
+            file.path === filePath ? { ...file, imported: true, documentId: result.document.id } : file)
+        }));
+      } catch (error) {
+        setSyncState(isApiAvailableError(error) ? "offline" : "error");
+        setFolderImport((prev) => ({
+          ...(prev || {}),
+          results: { ...(prev?.results || {}), [filePath]: { status: "failed", detail: describeOperationError(error) } }
+        }));
+      }
+    }
+    setFolderImport((prev) => ({ ...(prev || {}), importing: false }));
+    setSyncState("synced");
   };
 
   const openDuplicateReview = async () => {
@@ -1987,6 +2100,7 @@ function App() {
           onRestore={restoreWorkspaceFile}
           onRevealData={revealDataFolder}
           onFindDuplicates={openDuplicateReview}
+          onImportFolder={openFolderImport}
           onDiagnostics={runDiagnostics}
           onDeleteDoc={removeDocument}
           onRevealDoc={(doc) => revealDocumentInFinder(doc.id)}
@@ -2016,6 +2130,7 @@ function App() {
         <WorkspaceView
           quoteRecovery={quoteRecovery}
           onRevealSource={() => revealDocumentInFinder(doc.id)}
+          onImportSiblings={(folder) => openFolderImport(folder)}
           key={doc.id}
           project={project}
           doc={doc}
@@ -2109,6 +2224,16 @@ function App() {
           canPickTrackedPath={canPickTrackedPath}
         />
       ) : null}
+      {folderImport?.open && (
+        <FolderImportModal
+          state={folderImport}
+          onPickFolder={() => pickFolderToImport(folderImport.directory)}
+          onSetRecursive={(recursive) => scanFolderForImport(folderImport.directory, recursive)}
+          onImport={runFolderImport}
+          onOpenDocument={(documentId) => { setFolderImport(null); openDoc(documentId); }}
+          onClose={() => setFolderImport(null)}
+        />
+      )}
       {duplicateReview && (
         <DuplicateReviewModal
           state={duplicateReview}
@@ -2373,6 +2498,7 @@ function ProjectsView({
   onRestore,
   onRevealData,
   onFindDuplicates,
+  onImportFolder,
   onDiagnostics,
   onDeleteDoc,
   onRevealDoc,
@@ -2555,6 +2681,15 @@ function ProjectsView({
             <button
               className="project-icon-action"
               type="button"
+              onClick={() => onImportFolder("")}
+              title="从一个文件夹批量导入"
+              aria-label="从一个文件夹批量导入"
+            >
+              <Icon name="folder_open" />
+            </button>
+            <button
+              className="project-icon-action"
+              type="button"
               title="更多项目操作"
               aria-label="更多项目操作"
               aria-haspopup="menu"
@@ -2676,6 +2811,7 @@ function WorkspaceView(props) {
   const {
     quoteRecovery,
     onRevealSource,
+    onImportSiblings,
     doc,
     annotations,
     pageAnnotations,
@@ -3094,6 +3230,9 @@ function WorkspaceView(props) {
         <div className="doc-management">
           <button onClick={() => onRefreshDocument(false)} disabled={refreshState !== "idle"}><Icon name="refresh" />{refreshState === "refreshing" ? "刷新中" : "刷新"}</button>
           <button onClick={onRevealSource} title="在访达中显示这份文档所在的文件夹"><Icon name="folder_open" />所在文件夹</button>
+          {onImportSiblings && documentSourceFolder(doc) && (
+            <button onClick={() => onImportSiblings(documentSourceFolder(doc))} title="列出同一个文件夹里的其他文件，挑选要导入的"><Icon name="library_add" />导入同类</button>
+          )}
           <label role="button" tabIndex={0} onKeyDown={activateFileLabel} title="选择修改后的文档版本"><Icon name="upload_file" />选择新版<input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => { onRefreshWithFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
           {canPickTrackedPath && <button onClick={onBindSourceDocument} disabled={refreshState !== "idle"} title="指定用于刷新的原始文件"><Icon name="link" />{doc.sourceTracked === false ? "设置源" : "更换源"}</button>}
           {doc.versions?.length ? (
@@ -3444,6 +3583,30 @@ function Brand() {
   );
 }
 
+// Everything the macOS clipboard synthesises arrives under the same name — a screenshot is always
+// "image.png" — so a few pastes would leave a row of identically named documents. A file that has a
+// real path behind it keeps the name it has on disk; only the invented ones get stamped.
+function namePastedFile(file) {
+  try {
+    if (window.reviewAnnotationDesktop?.getFilePath?.(file)) return file;
+  } catch {
+    // No path behind it, so it wants a name of its own.
+  }
+  const dot = file.name.lastIndexOf(".");
+  const extension = dot > 0 ? file.name.slice(dot + 1).toLowerCase() : String(file.type || "").split("/")[1] || "png";
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
+  return new File([file], `粘贴-${stamp}.${extension}`, { type: file.type });
+}
+
+// Only a document that came from a real local file has a folder worth scanning. A URL import, or one
+// the app only holds its own copy of, has nothing to offer the folder importer.
+function documentSourceFolder(doc) {
+  const filePath = String(doc?.originalPath || "");
+  if (!filePath || /^[a-z][a-z0-9+.-]*:\/\//i.test(filePath)) return "";
+  const cut = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
+  return cut > 0 ? filePath.slice(0, cut) : "";
+}
+
 function documentSourceDisplayPath(doc) {
   const sourceLabel = String(doc?.sourceLabel || "");
   return doc?.originalPath
@@ -3612,6 +3775,197 @@ function ProjectRowMenu({ project, groups, onNewChild, onMoveToGroup }) {
           </>
         )}
       </RowMenu>
+    </div>
+  );
+}
+
+const FOLDER_KIND_LABELS = {
+  pdf: "PDF",
+  office: "Office",
+  image: "图片",
+  markdown: "文本",
+  data: "表格",
+  html: "网页",
+  file: "其他"
+};
+
+function FolderImportModal({ state, onPickFolder, onSetRecursive, onImport, onOpenDocument, onClose }) {
+  const [kind, setKind] = useState("all");
+  const [picked, setPicked] = useState({});
+
+  const files = state.files || [];
+  const results = state.results || {};
+  const visible = kind === "all" ? files : files.filter((file) => file.kind === kind);
+  // Already in the workspace, or larger than the app will take: offering these would only produce a
+  // duplicate to clean up later, or a failure.
+  const selectable = (file) => !file.imported && !file.tooLarge;
+  // The stated default is "import everything of this type", so the tick boxes are for exclusions.
+  const isPicked = (file) => (file.path in picked ? picked[file.path] : selectable(file));
+  const chosen = visible.filter((file) => selectable(file) && isPicked(file));
+  const failed = files.filter((file) => results[file.path]?.status === "failed");
+  const succeeded = files.filter((file) => results[file.path]?.status === "done");
+  const kinds = Object.entries(state.byKind || {}).filter(([, count]) => count > 0);
+
+  const setAll = (value) => {
+    const next = { ...picked };
+    for (const file of visible) if (selectable(file)) next[file.path] = value;
+    setPicked(next);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={state.importing ? undefined : onClose}>
+      <div className="folder-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-head">
+          <div className="modal-icon"><Icon name="folder_open" /></div>
+          <div>
+            <strong>从文件夹导入</strong>
+            <small>只读取文件列表，导入哪些由你决定</small>
+          </div>
+          <button
+            className="plain-icon"
+            type="button"
+            onClick={onClose}
+            disabled={state.importing}
+            title={state.importing ? "导入进行中" : "关闭"}
+            aria-label="关闭"
+          >
+            <Icon name="close" />
+          </button>
+        </div>
+
+        <div className="folder-source">
+          <button className="copy-action" type="button" onClick={onPickFolder} disabled={state.importing}>
+            <Icon name="folder" />
+            {state.directory ? "换一个文件夹" : "选择文件夹"}
+          </button>
+          {state.directory && <code className="folder-path" title={state.directory}>{state.directory}</code>}
+          {state.directory && (
+            <label className="folder-recursive">
+              <input
+                type="checkbox"
+                checked={Boolean(state.recursive)}
+                disabled={state.importing || state.loading}
+                onChange={(event) => onSetRecursive(event.target.checked)}
+              />
+              包含子文件夹
+            </label>
+          )}
+        </div>
+
+        {state.directory && !state.loading && files.length > 0 && (
+          <div className="folder-filters">
+            <button
+              type="button"
+              className={kind === "all" ? "folder-chip is-on" : "folder-chip"}
+              onClick={() => setKind("all")}
+            >
+              全部 {files.length}
+            </button>
+            {kinds.map(([key, count]) => (
+              <button
+                key={key}
+                type="button"
+                className={kind === key ? "folder-chip is-on" : "folder-chip"}
+                onClick={() => setKind(key)}
+              >
+                {FOLDER_KIND_LABELS[key] || key} {count}
+              </button>
+            ))}
+            <span className="folder-bulk">
+              <button type="button" onClick={() => setAll(true)} disabled={state.importing}>全选</button>
+              <button type="button" onClick={() => setAll(false)} disabled={state.importing}>全不选</button>
+            </span>
+          </div>
+        )}
+
+        <div className="folder-body">
+          {state.error && <p className="folder-empty">{state.error}</p>}
+          {state.loading && <p className="folder-empty">正在读取文件夹…</p>}
+          {!state.loading && !state.error && !state.directory && (
+            <p className="folder-empty">先选择一个文件夹，这里会列出里面可以导入的文件。</p>
+          )}
+          {!state.loading && !state.error && state.directory && !files.length && (
+            <p className="folder-empty">
+              这个文件夹里没有可以导入的文件。
+              {state.subdirectories > 0 && !state.recursive && ` 它有 ${state.subdirectories} 个下级文件夹，勾选「包含子文件夹」再看看。`}
+            </p>
+          )}
+          {!state.loading && visible.length > 0 && (
+            <ul className="folder-files">
+              {visible.map((file) => {
+                const result = results[file.path];
+                return (
+                  <li key={file.path} className={result ? `is-${result.status}` : ""}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={selectable(file) && isPicked(file)}
+                        disabled={!selectable(file) || state.importing}
+                        onChange={(event) => setPicked((prev) => ({ ...prev, [file.path]: event.target.checked }))}
+                      />
+                      <span className="folder-file-main">
+                        <strong>{file.relativePath || file.name}</strong>
+                        <small>
+                          {FOLDER_KIND_LABELS[file.kind] || file.kind} · {formatBytes(file.size)} · {formatRelative(file.modifiedAt)}
+                        </small>
+                      </span>
+                    </label>
+                    <span className="folder-file-state">
+                      {file.tooLarge && <em className="folder-bad">超过大小上限</em>}
+                      {file.imported && !file.tooLarge && (
+                        <button type="button" className="folder-linked" onClick={() => onOpenDocument(file.documentId)}>
+                          已导入 · 打开
+                        </button>
+                      )}
+                      {result?.status === "importing" && <em>导入中…</em>}
+                      {result?.status === "done" && <em className="folder-good">已导入</em>}
+                      {result?.status === "failed" && <em className="folder-bad" title={result.detail}>失败</em>}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {state.truncated && (
+            <p className="folder-note">文件太多，只列出了前 {state.limit} 个。先按类型缩小，或选更具体的子文件夹。</p>
+          )}
+          {state.subdirectories > 0 && !state.recursive && files.length > 0 && (
+            <p className="folder-note">还有 {state.subdirectories} 个下级文件夹没有展开。</p>
+          )}
+          {(state.unreadable || []).length > 0 && (
+            <p className="folder-note">有 {state.unreadable.length} 个文件夹读不了，已跳过：{state.unreadable.slice(0, 3).join("、")}</p>
+          )}
+        </div>
+
+        <div className="folder-foot">
+          <span>
+            {state.importing
+              ? `正在导入，成功 ${succeeded.length} 项${failed.length ? `，失败 ${failed.length} 项` : ""}`
+              : failed.length
+                ? `成功 ${succeeded.length} 项，失败 ${failed.length} 项。失败的文件仍在原处，可以重试。`
+                : succeeded.length
+                  ? `成功导入 ${succeeded.length} 项。`
+                  : `已选 ${chosen.length} 项${visible.length - chosen.length > 0 ? `，跳过 ${visible.length - chosen.length} 项` : ""}`}
+          </span>
+          <span className="folder-foot-actions">
+            {!state.importing && failed.length > 0 && (
+              <button className="copy-action" type="button" onClick={() => onImport(failed.map((file) => file.path))}>
+                <Icon name="refresh" />
+                重试失败的 {failed.length} 项
+              </button>
+            )}
+            <button
+              className="primary-action"
+              type="button"
+              disabled={state.importing || !chosen.length}
+              onClick={() => onImport(chosen.map((file) => file.path))}
+            >
+              <Icon name="download" />
+              {state.importing ? "导入中…" : `导入 ${chosen.length} 项`}
+            </button>
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

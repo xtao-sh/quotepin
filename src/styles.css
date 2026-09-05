@@ -4787,3 +4787,200 @@ textarea {
     display: inline;
   }
 }
+
+/* Folder import. The list is the feature: the user narrows by type, then unticks what they do not
+   want, so the row has to carry enough to decide by — kind, size, age — and say plainly when a file
+   is already in the workspace or has just failed. */
+.folder-modal {
+  width: min(100%, 680px);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+}
+
+.folder-source {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.folder-path {
+  flex: 1 1 260px;
+  min-width: 0;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.folder-recursive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.folder-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.folder-chip {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.folder-chip:hover { background: var(--panel-soft); }
+
+.folder-chip.is-on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.folder-bulk {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.folder-bulk button {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.folder-bulk button:disabled { color: var(--faint); cursor: default; }
+
+.folder-body {
+  flex: 1 1 auto;
+  padding: 8px 20px 12px;
+  overflow-y: auto;
+}
+
+.folder-empty {
+  margin: 0;
+  padding: 16px 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.folder-note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 1.6;
+}
+
+.folder-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.folder-files li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.folder-files li:last-child { border-bottom: none; }
+
+.folder-files label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.folder-files input:disabled { cursor: default; }
+
+.folder-file-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.folder-file-main strong {
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.folder-file-main small {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.folder-file-state {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
+.folder-file-state em {
+  font-style: normal;
+  color: var(--muted);
+}
+
+.folder-good { color: #1c8a51; }
+.folder-bad { color: #d1453b; }
+
+.folder-linked {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.folder-files li.is-failed { background: rgba(209, 69, 59, 0.06); }
+.folder-files li.is-importing { opacity: 0.7; }
+
+.folder-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.folder-foot-actions {
+  display: inline-flex;
+  gap: 8px;
+}
